@@ -15,7 +15,7 @@ link_bot_username = os.getenv("LINK_BOT_USERNAME")
 pending_messages = {}
 
 # Create the Telegram client
-client = TelegramClient("multi_forward_session", api_id, api_hash)
+client = TelegramClient("multi_forward_session_cloud", api_id, api_hash)
 
 # with TelegramClient('find_my_chats', api_id, api_hash) as client:
 #     for dialog in client.iter_dialogs():
