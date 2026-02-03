@@ -3,6 +3,7 @@ import os
 from telethon import TelegramClient, events
 from telethon.sync import TelegramClient
 
+
 # === CONFIGURATION ===
 api_id = int(os.getenv("API_ID"))
 api_hash = os.getenv("API_HASH")
@@ -10,9 +11,11 @@ api_hash = os.getenv("API_HASH")
 source_channels = os.getenv("SOURCE_CHANNELS").split(",")
 target_channels = os.getenv("TARGET_CHANNELS").split(",")
 link_bot_username = os.getenv("LINK_BOT_USERNAME")
+video_bot_username = os.getenv("VIDEO_BOT_USERNAME")
 
 # Optional: Track pending messages if needed
 pending_messages = {}
+pending_video_requests = {}
 
 # Create the Telegram client
 client = TelegramClient("multi_forward_session_cloud", api_id, api_hash)
@@ -24,6 +27,23 @@ client = TelegramClient("multi_forward_session_cloud", api_id, api_hash)
 # PART 1: Listen to source channels and forward messages to bot
 @client.on(events.NewMessage(chats=source_channels))
 async def forward_to_link_bot(event):
+    msg = event.message
+    if not msg:
+        return
+
+    # ---- CASE 1: VIDEO ----
+    if msg.video:
+        print("🎥 Video detected. Sending to video bot...")
+
+        bot_entity = await client.get_entity(video_bot_username)
+        sent = await client.send_message(bot_entity, msg)
+
+        pending_video_requests[sent.id] = {
+            "source": event.chat_id
+        }
+        
+        return
+
     original_msg = event.raw_text
 
     if not original_msg:
@@ -68,6 +88,22 @@ async def handle_bot_reply(event):
 
     except Exception as e:
         print(f"[!] Error handling bot reply: {e}")
+
+# ================= PART 3 =================
+# Listen to Video Bot replies
+@client.on(events.NewMessage(from_users=video_bot_username))
+async def handle_video_bot_reply(event):
+    try:
+        reply_msg = event.message
+
+        print("✅ Video bot replied. Forwarding to targets...")
+
+        for target in target_channels:
+            await client.send_message(target, reply_msg)
+            print(f"➡️ Video forwarded to {target}")
+
+    except Exception as e:
+        print(f"[!] Error handling video bot reply: {e}")
 
 # Start the bot
 print("👂 Listening for source messages and bot replies...")
