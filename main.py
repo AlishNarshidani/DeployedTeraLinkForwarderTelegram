@@ -31,8 +31,15 @@ async def forward_to_link_bot(event):
     if not msg:
         return
 
-    # ---- CASE 1: VIDEO ----
-    if msg.video:
+    # ---- CASE 1: VIDEO (native OR document video) ----
+    is_video = bool(msg.video)
+    is_video_file = (
+        bool(msg.document) and
+        msg.document.mime_type and
+        msg.document.mime_type.startswith("video/")
+    )
+
+    if is_video or is_video_file:
         print("🎥 Video detected. Sending to video bot...")
 
         bot_entity = await client.get_entity(video_bot_username)
@@ -95,8 +102,13 @@ async def handle_bot_reply(event):
 async def handle_video_bot_reply(event):
     try:
         reply_msg = event.message
+        reply_text = event.raw_text
 
-        print("✅ Video bot replied. Forwarding to targets...")
+        if not reply_text or "http" not in reply_text:
+            print("[!] Bot reply doesn't look like a valid link — skipping.")
+            return
+
+        print(f"[✓] Video Bot replied: {reply_text[:60]}...")
 
         for target in target_channels:
             await client.send_message(target, reply_msg)
